@@ -1,9 +1,12 @@
+Below is a refreshed **README.md** that folds in **`gerbe_full_demo.py`**, fixes the stray code‑block markup, and incorporates the new “interactive vs head‑less” guidance.  
+Copy‑paste it over your existing README and you’re current.
 
-# Gerbe Obstruction Detector 🪄
+```md
+# Gerbe Obstruction Detector 🪄
 
-A **local‑to‑global consistency validator** inspired by gerbe theory (stacks
-of groupoids & 2‑cocycles).  It spots higher‑order inconsistencies,
-non‑reversible transforms, and silent drift in multi‑model or federated AI
+A **local‑to‑global consistency validator** inspired by gerbe theory (stacks  
+of groupoids & 2‑cocycles). It spots higher‑order inconsistencies,  
+non‑reversible transforms, and silent drift in multi‑model or federated AI  
 pipelines **before** they hit production.
 
 <p align="center">
@@ -13,27 +16,28 @@ pipelines **before** they hit production.
 
 ---
 
-## 📦 Repository layout
+## 📦 Repository layout
 
 | Path | Purpose |
 |------|---------|
-| `gerbe_obstruction_detector.py` | Core toy detector (triangles, policy JSON). |
-| `gerbe_embedding_demo.py` | **Embedding demo** – checks multilingual linear transforms in 2‑D. |
-| `gerbe_edge_demo.py` | **Edge/federated demo** – N‑dim embeddings, inverse checker, drift simulation, k‑simplex validation. |
-| `tests/` | (Optional) pytest suite if you copy the provided snippets. |
+| `gerbe_obstruction_detector.py` | **Triangle + policy** toy checker |
+| `gerbe_embedding_demo.py` | **2‑D multilingual embeddings** (drift flag, `--save-fig`) |
+| `gerbe_edge_demo.py` | **Edge/federated** – N‑dim numeric drift + inverse checks |
+| `gerbe_full_demo.py` | **Kitchen‑sink** – embeddings **+** policy **+** artefact reports |
+| `tests/` | (Optional) pytest suite you can extend |
 
 ---
 
-## 🔧 Installation
+## 🔧 Installation
 
 ```bash
 # Clone the repo
-$ git clone https://github.com/MJ-Ref/gerbe.git
-$ cd gerbe
+git clone https://github.com/MJ-Ref/gerbe.git
+cd gerbe
 
-```bash
+# Set up env
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt      # if you add one
 # or, because deps are light:
 pip install numpy networkx matplotlib
 ```
@@ -42,55 +46,78 @@ Python ≥ 3.9 recommended.
 
 ---
 
-## 🚀 Quick start
+## 🚀 Quick start
 
 ```bash
-# 1. Basic triangle check with policy blobs
+# 1 · Policy triangle check
 python gerbe_obstruction_detector.py
 
-# 2. Multilingual embedding validator (inject a 10° drift)
+# 2 · Multilingual embedding validator (inject 10° drift)
 python gerbe_embedding_demo.py --inject-bug --fail-on-error
 
-# 3. Edge / federated scenario with 5 % shortcut drift & 64‑D embeddings
+# 3 · Federated scenario (5 % numeric drift, 64‑D)
 python gerbe_edge_demo.py --nodes 4 --dim 64 --drift 0.05 --k 3 --fail-on-error
+
+# 4 · Full‑stack demo with artefact reports (CI‑ready)
+python gerbe_full_demo.py --nodes 8 --dim 128 --drift 0.04 \
+  --policy-drift 0.20 --k 3 --report --fail-on-error
 ```
 
-All scripts pop up a provenance graph:
+Graph legend:
 
-* **Black edge** – reversible transform OK  
-* **Red edge** – inverse sanity check failed  
-* **⚠ inside simplex** – higher‑order obstruction (paths disagree)
+* **Black edge** = reversible transform OK  
+* **Red edge**  = inverse sanity check failed  
+* **⚠** inside simplex = numeric embedding obstruction  
+* **✖** inside simplex = policy (JSON) obstruction  
 
-If `--fail-on-error` is supplied, the script exits 1 to block CI.
+If `--fail-on-error` is supplied, the script exits 1 to gate CI.
 
 ---
 
-## 🧠 How it works (high level)
+## 🖼️ Interactive vs Head‑less runs
 
-1. **Contexts** (devices, languages, micro‑agents) become *objects* in a
-   groupoid.
-2. **Morphisms** are reversible transforms between contexts (policy rewrite,
-   embedding rotation, data redaction …).
-3. For every *k*-simplex (default 3 = triangle) the tool compares
-   two paths:
+| Mode | What happens | When to use |
+|------|--------------|-------------|
+| **Interactive** (default) | Matplotlib GUI pops up; terminal waits until you close it. | Local exploration. |
+| **Head‑less** | No window. PNG + JSON + HTML report written to `./reports/`. | CI, SSH, evidence packets. |
 
+### Head‑less cheat sheet
+
+```bash
+# Minimal head‑less run (PNG+JSON+HTML)
+python gerbe_full_demo.py --report
+
+# Extended example (numeric + policy drift, CI gate)
+python gerbe_full_demo.py --nodes 8 --dim 128 --drift 0.04 \
+  --policy-drift 0.2 --k 3 --report --fail-on-error
 ```
-obj₁ → obj₂ → … → obj_k   vs.   obj₁ → obj_k
-```
 
-If the composed map and the direct shortcut disagree within tolerance,
-we’ve detected a **degree‑2 (or higher) obstruction** – the very heart of a
-gerbe’s 2‑cocycle.
+> **Tip:** multi‑line Bash commands need **plain ASCII `\`** line ‑continuations.  
+> Fancy spaces from chat copy‑paste can confuse `zsh` (`unknown file attribute`).
 
-4. Optionally, each morphism’s inverse is verified (`M·M⁻¹ ≈ I`).  
-   Failure marks that edge red.
+`gerbe_embedding_demo.py` supports `--save-fig filename.png` to save just the  
+figure and skip the GUI.
 
 ---
 
-## 🛠  CI integration
+## 🧠 How it works (high level)
+
+1. **Contexts** (devices, languages, micro‑agents) become *objects* in a groupoid.  
+2. **Morphisms** = reversible transforms (policy rewrite, embedding rotation).  
+3. For every *k*‑simplex (default 3):
+
+   ```
+   obj₁ → obj₂ → … → objₖ   vs.   obj₁ → objₖ
+   ```
+
+   If paths disagree → **degree‑2 obstruction** (the core gerbe 2‑cocycle).  
+4. Optional inverse check (`M·M⁻¹ ≈ I`) marks red edges.
+
+---
+
+## 🛠 CI integration (GitHub Actions)
 
 ```yaml
-# .github/workflows/gerbe-check.yml
 name: Gerbe Validator
 
 on: [pull_request]
@@ -104,47 +131,54 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install numpy networkx matplotlib
-      - run: python gerbe_edge_demo.py --nodes 4 --dim 64 --drift 0.02 --fail-on-error
+      - run: python gerbe_full_demo.py --nodes 8 --dim 128 \
+             --drift 0.02 --policy-drift 0.1 --k 3 \
+             --report --fail-on-error
 ```
 
-A failing obstruction or bad inverse will stop the PR from merging.
+Any obstruction or bad inverse stops the PR from merging; PNG + HTML attach to build artefacts.
 
 ---
 
-## ✨ Validation demos in depth
+## ✨ Validation demos in depth
 
-### `gerbe_embedding_demo.py` — multilingual linear transforms
+### `gerbe_embedding_demo.py`
 
-| What it shows | Why it matters |
-|---------------|----------------|
-| 2‑D toy embeddings (`dog` vector) | Easy to visualise; keeps math clear. |
-| Rotations model EN→ES→FR translations | Realistic analogue for encoder/decoder weight sharing. |
-| Drift injection `--inject-bug` | Simulates mis‑aligned retrain, catches it via gerbe check. |
+| Demo detail | Why it matters |
+|-------------|----------------|
+| 2‑D toy embeddings | Easy to visualise. |
+| Rotations model EN→ES→FR | Realistic weight‑sharing analogue. |
+| `--inject-bug` flag | Reproduces mis‑aligned retrain. |
 
-### `gerbe_edge_demo.py` — federated / edge network
+### `gerbe_edge_demo.py`
 
-| What it shows | Why it matters |
-|---------------|----------------|
-| 64‑D embeddings (configurable) | Scales to production vector sizes. |
+| Demo detail | Why it matters |
+|-------------|----------------|
+| 64‑D embeddings (configurable) | Production‑scale vectors. |
 | Random orthonormal matrices | Stand‑in for privacy‑preserving transforms. |
-| Noise / drift on shortcuts | Models rogue device versions or stale weights. |
-| *k*-simplex up to Čech cover | Higher‑order guarantees no incumbent stack checks. |
-| Red‑edge inverse verifier | Early detection of non‑reversible updates. |
+| Drift injection | Models rogue device versions. |
+| k‑simplex up to Čech | Guarantees incumbents don’t. |
+
+### `gerbe_full_demo.py`
+
+| Demo detail | Why it matters |
+|-------------|----------------|
+| Numeric + policy layers combined | Mirrors real multi‑layer stacks. |
+| Artefact reports (PNG + JSON + HTML) | Machine‑parsable & auditor‑friendly. |
+| CI gate flag (`--fail-on-error`) | Drop‑in pipeline safety net. |
 
 ---
 
 ## 🗺 Roadmap
 
-* **Typed API / pydantic models** – pluggable transform registries.  
-* **Graphviz export** – PDF provenance certificates for audits.  
-* **gRPC service** – drop‑in micro‑service for online validation.  
-* **Automatic repair suggestions** – minimal path patch to restore consistency.  
-* **Edge delta sync** – send only overlap maps, preserving data privacy.
+* **Typed API / Pydantic models** — pluggable transform registry  
+* **Graphviz export** — PDF provenance certs for audits  
+* **gRPC micro‑service** — online validation guardrail  
+* **Automatic repair suggestions** — minimal patch hints  
+* **Edge delta sync** — ship only overlap maps (privacy by design)
 
 ---
 
-
----
-
-*Gerbe: from the French “sheaf of wheat” 🌾—we weave scattered data into a
+*Gerbe: from the French “sheaf of wheat” 🌾—we weave scattered data into a  
 coherent harvest of insight.*
+```

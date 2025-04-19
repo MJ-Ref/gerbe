@@ -2,4 +2,10 @@
 .venv/
 
 # Temporary/old files
-README old.md 
+README old.md
+
+# macOS system files
+.DS_Store
+
+# Output directories
+reports/ 
