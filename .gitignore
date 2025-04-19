@@ -1,0 +1,5 @@
+# Virtual environment
+.venv/
+
+# Temporary/old files
+README old.md 
