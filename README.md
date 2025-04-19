@@ -1,7 +1,3 @@
-Below is a refreshed **README.md** that folds in **`gerbe_full_demo.py`**, fixes the stray code‑block markup, and incorporates the new “interactive vs head‑less” guidance.  
-Copy‑paste it over your existing README and you’re current.
-
-```md
 # Gerbe Obstruction Detector 🪄
 
 A **local‑to‑global consistency validator** inspired by gerbe theory (stacks  
@@ -181,4 +177,4 @@ Any obstruction or bad inverse stops the PR from merging; PNG + HTML attach to
 
 *Gerbe: from the French “sheaf of wheat” 🌾—we weave scattered data into a  
 coherent harvest of insight.*
-```
+
