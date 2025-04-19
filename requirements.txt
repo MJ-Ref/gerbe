@@ -1,0 +1,13 @@
+# Core numerics & graph ops
+numpy>=1.24,<2.0          # arrays & math
+networkx>=3.2             # triangle enumeration, graph ops
+
+# Visualisation
+matplotlib>=3.8           # provenance graphs
+
+# Benchmark memory profiling
+psutil>=5.9               # peak‑RSS measurement
+
+# Stage‑2 reversible‑transform tests
+# (CPU‑only build is fine unless you need CUDA)
+torch>=2.1.0,!=2.2.*      # PyTorch
