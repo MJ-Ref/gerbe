@@ -12,4 +12,7 @@ synthetic_harness/dataset.pkl
 synthetic_harness/sample.pkl
 
 # Python cache
-__pycache__/ 
+__pycache__/
+
+# Model artifacts
+models/ 

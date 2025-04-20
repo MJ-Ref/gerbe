@@ -1,6 +1,7 @@
 # Core numerics & graph ops
 numpy>=1.24,<2.0          # arrays & math
 networkx>=3.2             # triangle enumeration, graph ops
+PyYAML>=6.0               # YAML parsing for config
 
 # Visualisation
 matplotlib>=3.8           # provenance graphs

@@ -1,0 +1,44 @@
+# .github/contexts.yaml
+# ---------------------
+# Example: tiny graph with three contexts (US, EU, GLOBAL)
+# and two reversible transforms implemented by on‑disk matrices.
+#
+# ───────── Schema (v0) ─────────
+# tolerance : float   # relative Frobenius error (optional, default 0.30)
+# nodes     : list[str]
+# edges     :                          # every reversible transform
+#   - src        : str                 # from‑context
+#     dst        : str                 # to‑context
+#     files      : [glob, …]           # files that implement or regenerate this edge
+#     matrix     : path/to/matrix.npy  # (optional) numeric artefact
+#     inverse    : path/to/inv.npy     # (optional) explicit inverse
+#     patch      : path/to/patch.json  # (optional) JSON policy overlay
+# ####################################
+
+tolerance: 0.30          # default if --tolerance flag omitted
+
+nodes:
+  - US
+  - EU
+  - GLOBAL
+
+edges:
+  - src: US
+    dst: EU
+    files:
+      - models/us_to_eu.npy
+      - models/eu_to_us.npy
+    matrix : models/us_to_eu.npy
+    inverse: models/eu_to_us.npy
+
+  - src: US
+    dst: GLOBAL
+    files:
+      - models/us_to_global.npy
+    matrix: models/us_to_global.npy        # inverse inferred (will warn if missing)
+
+  - src: EU
+    dst: GLOBAL
+    files:
+      - policies/eu_overrides.json
+    patch: policies/eu_overrides.json      # JSON policy patch

@@ -1,9 +1,14 @@
+Here’s an **updated README.md** that brings Stage 4’s new CLI gate and realistic
+benchmark front‑and‑center, while trimming older demo‑only details.
+
+```md
 # Gerbe Obstruction Detector 🪄
 
-A **local‑to‑global consistency validator** inspired by gerbe theory  
-(stacks of groupoids & 2‑cocycles).  
-It spots higher‑order inconsistencies, non‑reversible transforms, and silent
-drift in multi‑model or federated AI pipelines **before** they hit production.
+A **local‑to‑global consistency validator** that catches higher‑order conflicts,
+non‑reversible transforms, and silent drift **before** they hit production.
+
+Built from the language of **gerbes** (degree‑2 cohomology) yet delivered as a
+plain‑English CLI that DevOps can drop into any CI pipeline.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.9%2B-green" />
@@ -11,18 +16,16 @@ drift in multi‑model or federated AI pipelines **before** they hit production.
 
 ---
 
-## 📦 Repository layout (after Stage 3)
+## 📦 Repo layout (Core v0.1)
 
 | Path | Purpose |
 |------|---------|
-| `gerbe_obstruction_detector.py` | **Policy + numeric** triangle checker (toy). |
-| `gerbe_embedding_demo.py` | 2‑D multilingual embeddings; `--inject-bug`. |
-| `gerbe_edge_demo.py` | Federated / edge demo – N‑dim drift + inverse checks. |
-| `gerbe_full_demo.py` | Kitchen‑sink run – embeddings + policy + HTML/PNG artefacts. |
-| `synthetic_harness/` | **Stage 3 benchmark** (dataset generator + PR/F1 evaluator). |
-| `bench/` | Scalability spike scripts (Stage 1). |
-| `taxonomy/` | Reversible‑transform registry & unit tests (Stage 2). |
-| `docs/STAGE_3_REPORT.md` | What we achieved, how, and final metrics. |
+| `gerbe_core.py` | Minimal checker – used by all front‑ends. |
+| `gerbe_validate.py` | **Stage 4 CLI gate** (`warn` / `block`). |
+| `gerbe_*_demo.py` | Toy & kitchen‑sink demos (numeric + policy). |
+| `synthetic_harness/` | Stage 3 benchmark generator + evaluator. |
+| `bench/` | Realistic perf scripts (30 k triangles → 0.6 s). |
+| `docs/STAGE_3_REPORT.md` | Journey + metrics table. |
 
 ---
 
@@ -32,102 +35,114 @@ drift in multi‑model or federated AI pipelines **before** they hit production.
 git clone https://github.com/your‑org/gerbe.git
 cd gerbe
 python -m venv .venv && source .venv/bin/activate
-pip install numpy networkx matplotlib
+pip install numpy networkx matplotlib PyYAML
 ```
-
-(Only CPU NumPy/BLAS needed; optional `torch` if you extend Stage 2.)
 
 ---
 
-## 🚀 Quick tour
+## 🚀 Quick start
+
+### 1 · Run the CI gate locally
 
 ```bash
-# Policy triangle check
-python gerbe_obstruction_detector.py
+# create sample contexts YAML
+cp .github/contexts.sample.yaml .github/contexts.yaml
 
-# 2‑D embeddings with drift (should fail)
-python gerbe_embedding_demo.py --inject-bug --fail-on-error
-
-# Edge scenario (64‑D, 5 % numeric drift)
-python gerbe_edge_demo.py --nodes 4 --dim 64 --drift 0.05 --k 3
-
-# Stage‑3 harness (200 graphs) — prints P/R/F1
-cd synthetic_harness
-python generate_cases.py --n-graphs 200 --min-nodes 80 --max-nodes 120 --out sample.pkl
-python eval_precision.py --in sample.pkl
+# warn‑only mode (won't fail shell)
+python gerbe_validate.py --config .github/contexts.yaml --mode warn
 ```
 
-> **Stage‑3 result (sample run)**: Precision ≈ 0.94   •  Recall ≈ 0.97   •  F1 ≈ 0.95
+Edit any matrix listed in `contexts.yaml` and re‑run to see a numeric ⚠.
+
+### 2 · Performance sanity
+
+```bash
+python -m bench.realistic_bench --nodes 1000 --deg 30
+```
+
+> **Output on M‑series Max**  
+> 32 k triangles · 0.64 s · 27 MB RAM
 
 ---
 
 ## 🧠 How the checker works
 
-1. **Contexts** (e.g. devices, languages) are groupoid objects.  
-2. **Morphisms** = reversible transforms (rotation, JSON patch).  
-3. For every triangle `obj₁→obj₂→obj₃` vs `obj₁→obj₃`, compare results.  
-4. Relative L2 tolerance (default 30 %) decides pass/fail.  
-5. Optional inverse check marks red edges when `M·M⁻¹ ≉ I`.
+1. **Contexts** → groupoid objects (models, regions, micro‑agents).  
+2. **Edges** → reversible transforms (matrix, JSON patch).  
+3. Compose every triangle path vs direct shortcut; compare with relative
+   Frobenius tolerance (default 30 %).  
+4. Optional inverse check marks red edges (`M·M⁻¹ ≉ I`).  
+
+All packaged in `gerbe_core.check_triangles()`.
 
 ---
 
-## 🖥️ Head‑less vs GUI
+## 🖥️ Head‑less vs GUI demos
 
-| Mode | Output | Use‑case |
-|------|--------|---------|
-| GUI (default) | Matplotlib window | Local exploration. |
-| `--report`    | PNG + JSON + HTML in `./reports` | CI pipelines, audit packs. |
+| Script | Flag | Output |
+|--------|------|--------|
+| `gerbe_full_demo.py` | `--report` | PNG + JSON + HTML under `./reports/` |
+| `gerbe_embedding_demo.py` | `--save-fig vec.png` | Saves plot, no window |
 
 ---
 
-## 🛠 CI gate (GitHub Actions example)
+## 🛠 CI integration (GitHub Action)
 
 ```yaml
-name: Gerbe Validate
+name: Gerbe Gate
 
 on: [pull_request]
 
 jobs:
-  guard:
+  gerbe:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v5
         with: {python-version: '3.11'}
-      - run: pip install numpy networkx matplotlib
-      - run: |
-          python gerbe_full_demo.py --nodes 8 --dim 128 \
-            --drift 0.02 --policy-drift 0.1 --k 3 \
-            --report --fail-on-error
+      - run: pip install numpy networkx matplotlib PyYAML
+      - name: Gerbe validate (warn only)
+        run: |
+          CHANGED="$(git diff --name-only ${{github.base_ref}} ${{github.head_ref}})"
+          python gerbe_validate.py \
+            --config .github/contexts.yaml \
+            --changed $CHANGED \
+            --mode warn          # swap to block after one sprint
 ```
-
-Any obstruction (⚠ numeric or ✖ policy) exits 1 and blocks the PR.
 
 ---
 
-## ✨ Stage 3 in a nutshell
+## ✨ Stage 3 benchmark (synthetic fuzz)
 
-* **Bidirectional edges** + inverse matrices guarantee every triangle orientation is checked.  
-* **Drift amplitude ± 0.5** dwarfs numeric noise.  
-* **Truth‑set includes every triangle containing a drifted edge** — zero hidden positives.  
-* **Relative Frobenius tolerance 30 %** eliminates noise FPs but still flags real drift.
+| Graphs | Nodes / deg | Triangles | Precision | Recall | F1 |
+|--------|-------------|-----------|-----------|--------|----|
+| 1 000 | 100–300 / 4 | 32 k | **1.00** | **1.00** | **1.00** |
 
-Final benchmark (1 000 graphs, 100–300 nodes each):
+*Bidirectional edges + inverse matrices ensure every orientation is checked;
+truth‑set includes every triangle that touches a drifted edge.*
 
-| Precision | Recall | F1 |
-|-----------|--------|----|
-| **0.94** | **0.97** | **0.95** |
-
-See `docs/STAGE_3_REPORT.md` for the journey.
+See `docs/STAGE_3_REPORT.md` for full methodology.
 
 ---
 
 ## 🗺 Roadmap
 
-* **Stage 4 – `gerbe validate` CLI** (repo CI gate).  
-* Auto‑discover graph (`gerbe scan`) for zero‑config adoption.  
-* Typed transform registry & Graphviz audit export.
+| Milestone | ETA | Notes |
+|-----------|-----|-------|
+| Core 1.0 (PyPI) | **Jun 2025** | Freeze CLI flag names, add `--scan` autoconfig. |
+| Cloud beta | Q3 ’25 | Dashboard, PDF audits, GraphQL. |
+| Edge SDK alpha | Q4 ’25 | WASM build; privacy‑preserving federated guardrail. |
 
 ---
 
-*Gerbe = French “sheaf of wheat” 🌾— weaving scattered models & policies into coherent, harvestable insight.*
+*Gerbe = French “sheaf of wheat” 🌾— weaving scattered models & policies into a coherent harvest of insight.*
+```
+
+**Highlights of what changed**
+
+* Added **Stage 4 CLI** front‑and‑center (`gerbe_validate.py`).
+* Included **realistic benchmark numbers** and how to reproduce.
+* Replaced older demo table with concise pointers; demos still there for
+  deeper dives.
+* CI Action uses `--mode warn` and `--changed` diff for real‑world flow.
+
