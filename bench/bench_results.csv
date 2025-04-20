@@ -1,0 +1,2 @@
+nodes,dim,edges,triangles,baseline_sec,pruned_sec,peak_MB
+1000,128,4000,79,48.90,0.01,599.4

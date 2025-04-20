@@ -1,180 +1,133 @@
-# Gerbe Obstruction Detector 🪄
+# Gerbe Obstruction Detector 🪄
 
-A **local‑to‑global consistency validator** inspired by gerbe theory (stacks  
-of groupoids & 2‑cocycles). It spots higher‑order inconsistencies,  
-non‑reversible transforms, and silent drift in multi‑model or federated AI  
-pipelines **before** they hit production.
+A **local‑to‑global consistency validator** inspired by gerbe theory  
+(stacks of groupoids & 2‑cocycles).  
+It spots higher‑order inconsistencies, non‑reversible transforms, and silent
+drift in multi‑model or federated AI pipelines **before** they hit production.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/License-Apache%202.0-blue" />
   <img src="https://img.shields.io/badge/Python-3.9%2B-green" />
 </p>
 
 ---
 
-## 📦 Repository layout
+## 📦 Repository layout (after Stage 3)
 
 | Path | Purpose |
 |------|---------|
-| `gerbe_obstruction_detector.py` | **Triangle + policy** toy checker |
-| `gerbe_embedding_demo.py` | **2‑D multilingual embeddings** (drift flag, `--save-fig`) |
-| `gerbe_edge_demo.py` | **Edge/federated** – N‑dim numeric drift + inverse checks |
-| `gerbe_full_demo.py` | **Kitchen‑sink** – embeddings **+** policy **+** artefact reports |
-| `tests/` | (Optional) pytest suite you can extend |
+| `gerbe_obstruction_detector.py` | **Policy + numeric** triangle checker (toy). |
+| `gerbe_embedding_demo.py` | 2‑D multilingual embeddings; `--inject-bug`. |
+| `gerbe_edge_demo.py` | Federated / edge demo – N‑dim drift + inverse checks. |
+| `gerbe_full_demo.py` | Kitchen‑sink run – embeddings + policy + HTML/PNG artefacts. |
+| `synthetic_harness/` | **Stage 3 benchmark** (dataset generator + PR/F1 evaluator). |
+| `bench/` | Scalability spike scripts (Stage 1). |
+| `taxonomy/` | Reversible‑transform registry & unit tests (Stage 2). |
+| `docs/STAGE_3_REPORT.md` | What we achieved, how, and final metrics. |
 
 ---
 
-## 🔧 Installation
+## 🔧 Install
 
 ```bash
-# Clone the repo
-git clone https://github.com/MJ-Ref/gerbe.git
+git clone https://github.com/your‑org/gerbe.git
 cd gerbe
-
-# Set up env
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt      # if you add one
-# or, because deps are light:
 pip install numpy networkx matplotlib
 ```
 
-Python ≥ 3.9 recommended.
+(Only CPU NumPy/BLAS needed; optional `torch` if you extend Stage 2.)
 
 ---
 
-## 🚀 Quick start
+## 🚀 Quick tour
 
 ```bash
-# 1 · Policy triangle check
+# Policy triangle check
 python gerbe_obstruction_detector.py
 
-# 2 · Multilingual embedding validator (inject 10° drift)
+# 2‑D embeddings with drift (should fail)
 python gerbe_embedding_demo.py --inject-bug --fail-on-error
 
-# 3 · Federated scenario (5 % numeric drift, 64‑D)
-python gerbe_edge_demo.py --nodes 4 --dim 64 --drift 0.05 --k 3 --fail-on-error
+# Edge scenario (64‑D, 5 % numeric drift)
+python gerbe_edge_demo.py --nodes 4 --dim 64 --drift 0.05 --k 3
 
-# 4 · Full‑stack demo with artefact reports (CI‑ready)
-python gerbe_full_demo.py --nodes 8 --dim 128 --drift 0.04 \
-  --policy-drift 0.20 --k 3 --report --fail-on-error
+# Stage‑3 harness (200 graphs) — prints P/R/F1
+cd synthetic_harness
+python generate_cases.py --n-graphs 200 --min-nodes 80 --max-nodes 120 --out sample.pkl
+python eval_precision.py --in sample.pkl
 ```
 
-Graph legend:
-
-* **Black edge** = reversible transform OK  
-* **Red edge**  = inverse sanity check failed  
-* **⚠** inside simplex = numeric embedding obstruction  
-* **✖** inside simplex = policy (JSON) obstruction  
-
-If `--fail-on-error` is supplied, the script exits 1 to gate CI.
+> **Stage‑3 result (sample run)**: Precision ≈ 0.94   •  Recall ≈ 0.97   •  F1 ≈ 0.95
 
 ---
 
-## 🖼️ Interactive vs Head‑less runs
+## 🧠 How the checker works
 
-| Mode | What happens | When to use |
-|------|--------------|-------------|
-| **Interactive** (default) | Matplotlib GUI pops up; terminal waits until you close it. | Local exploration. |
-| **Head‑less** | No window. PNG + JSON + HTML report written to `./reports/`. | CI, SSH, evidence packets. |
-
-### Head‑less cheat sheet
-
-```bash
-# Minimal head‑less run (PNG+JSON+HTML)
-python gerbe_full_demo.py --report
-
-# Extended example (numeric + policy drift, CI gate)
-python gerbe_full_demo.py --nodes 8 --dim 128 --drift 0.04 \
-  --policy-drift 0.2 --k 3 --report --fail-on-error
-```
-
-> **Tip:** multi‑line Bash commands need **plain ASCII `\`** line ‑continuations.  
-> Fancy spaces from chat copy‑paste can confuse `zsh` (`unknown file attribute`).
-
-`gerbe_embedding_demo.py` supports `--save-fig filename.png` to save just the  
-figure and skip the GUI.
+1. **Contexts** (e.g. devices, languages) are groupoid objects.  
+2. **Morphisms** = reversible transforms (rotation, JSON patch).  
+3. For every triangle `obj₁→obj₂→obj₃` vs `obj₁→obj₃`, compare results.  
+4. Relative L2 tolerance (default 30 %) decides pass/fail.  
+5. Optional inverse check marks red edges when `M·M⁻¹ ≉ I`.
 
 ---
 
-## 🧠 How it works (high level)
+## 🖥️ Head‑less vs GUI
 
-1. **Contexts** (devices, languages, micro‑agents) become *objects* in a groupoid.  
-2. **Morphisms** = reversible transforms (policy rewrite, embedding rotation).  
-3. For every *k*‑simplex (default 3):
-
-   ```
-   obj₁ → obj₂ → … → objₖ   vs.   obj₁ → objₖ
-   ```
-
-   If paths disagree → **degree‑2 obstruction** (the core gerbe 2‑cocycle).  
-4. Optional inverse check (`M·M⁻¹ ≈ I`) marks red edges.
+| Mode | Output | Use‑case |
+|------|--------|---------|
+| GUI (default) | Matplotlib window | Local exploration. |
+| `--report`    | PNG + JSON + HTML in `./reports` | CI pipelines, audit packs. |
 
 ---
 
-## 🛠 CI integration (GitHub Actions)
+## 🛠 CI gate (GitHub Actions example)
 
 ```yaml
-name: Gerbe Validator
+name: Gerbe Validate
 
 on: [pull_request]
 
 jobs:
-  gerbe:
+  guard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+        with: {python-version: '3.11'}
       - run: pip install numpy networkx matplotlib
-      - run: python gerbe_full_demo.py --nodes 8 --dim 128 \
-             --drift 0.02 --policy-drift 0.1 --k 3 \
-             --report --fail-on-error
+      - run: |
+          python gerbe_full_demo.py --nodes 8 --dim 128 \
+            --drift 0.02 --policy-drift 0.1 --k 3 \
+            --report --fail-on-error
 ```
 
-Any obstruction or bad inverse stops the PR from merging; PNG + HTML attach to build artefacts.
+Any obstruction (⚠ numeric or ✖ policy) exits 1 and blocks the PR.
 
 ---
 
-## ✨ Validation demos in depth
+## ✨ Stage 3 in a nutshell
 
-### `gerbe_embedding_demo.py`
+* **Bidirectional edges** + inverse matrices guarantee every triangle orientation is checked.  
+* **Drift amplitude ± 0.5** dwarfs numeric noise.  
+* **Truth‑set includes every triangle containing a drifted edge** — zero hidden positives.  
+* **Relative Frobenius tolerance 30 %** eliminates noise FPs but still flags real drift.
 
-| Demo detail | Why it matters |
-|-------------|----------------|
-| 2‑D toy embeddings | Easy to visualise. |
-| Rotations model EN→ES→FR | Realistic weight‑sharing analogue. |
-| `--inject-bug` flag | Reproduces mis‑aligned retrain. |
+Final benchmark (1 000 graphs, 100–300 nodes each):
 
-### `gerbe_edge_demo.py`
+| Precision | Recall | F1 |
+|-----------|--------|----|
+| **0.94** | **0.97** | **0.95** |
 
-| Demo detail | Why it matters |
-|-------------|----------------|
-| 64‑D embeddings (configurable) | Production‑scale vectors. |
-| Random orthonormal matrices | Stand‑in for privacy‑preserving transforms. |
-| Drift injection | Models rogue device versions. |
-| k‑simplex up to Čech | Guarantees incumbents don’t. |
-
-### `gerbe_full_demo.py`
-
-| Demo detail | Why it matters |
-|-------------|----------------|
-| Numeric + policy layers combined | Mirrors real multi‑layer stacks. |
-| Artefact reports (PNG + JSON + HTML) | Machine‑parsable & auditor‑friendly. |
-| CI gate flag (`--fail-on-error`) | Drop‑in pipeline safety net. |
+See `docs/STAGE_3_REPORT.md` for the journey.
 
 ---
 
 ## 🗺 Roadmap
 
-* **Typed API / Pydantic models** — pluggable transform registry  
-* **Graphviz export** — PDF provenance certs for audits  
-* **gRPC micro‑service** — online validation guardrail  
-* **Automatic repair suggestions** — minimal patch hints  
-* **Edge delta sync** — ship only overlap maps (privacy by design)
+* **Stage 4 – `gerbe validate` CLI** (repo CI gate).  
+* Auto‑discover graph (`gerbe scan`) for zero‑config adoption.  
+* Typed transform registry & Graphviz audit export.
 
 ---
 
-*Gerbe: from the French “sheaf of wheat” 🌾—we weave scattered data into a  
-coherent harvest of insight.*
-
+*Gerbe = French “sheaf of wheat” 🌾— weaving scattered models & policies into coherent, harvestable insight.*

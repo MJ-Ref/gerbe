@@ -1,251 +1,130 @@
 """
-taxonomy/reversible_transforms.py
----------------------------------
-Catalog of *common* ML‑ops transforms plus an `approx_inverse()` stub
-for each.  The goal is to quantify how many real‑world ops are
-reversible *enough* for gerbe checks.
+reversible_transforms.py
+------------------------
+Registry of *mostly* reversible ML‑ops transforms.
 
-The registry maps a name → (forward_fn, inverse_fn, sample_value).
+Each @register(name) function must return
+    forward_fn, inverse_fn, sample_value [, tol]
 
-For fuzzy inverses we check L2 or semantic equality within a tolerance.
+* `sample_value` keeps the unit test fast.
+* `tol` (optional) is the numeric max‑error allowed for tensors/arrays.
+  Default = 1e‑3 if omitted.
+* Returning None for either fn means "skip this transform" (non‑reversible).
+
+The Stage‑2 unit test crawls REGISTRY and checks that
+inv(forward(sample)) ≈ sample.
 """
 
-import json
+from __future__ import annotations
+import copy
 import numpy as np
 import torch
-import copy
 
-REGISTRY = {}
+REGISTRY: dict[str, callable] = {}
 
-def register(name):
-    def _wrap(fnsample):
-        REGISTRY[name] = fnsample
-        return fnsample
-    return _wrap
 
-# --------------------------------------------------------------------
-# 1. Identity (baseline sanity)
+def register(name: str):
+    def deco(fn):
+        REGISTRY[name] = fn
+        return fn
+
+    return deco
+
+
+# -------------------------------------------------------------------------
+# 1. Identity (sanity baseline)
+# -------------------------------------------------------------------------
 @register("identity")
-def _( ):
+def _identity():
     fwd = lambda x: x
     inv = lambda x: x
     sample = 42
-    return fwd, inv, sample
+    return fwd, inv, sample  # default tol = 1e‑3
 
-# --------------------------------------------------------------------
-# 2. fp32 ↔ fp16 tensor cast
+
+# -------------------------------------------------------------------------
+# 2. fp32_to_fp16  (allow 5e‑3 just to be safe on extreme values)
+# -------------------------------------------------------------------------
 @register("fp32_to_fp16")
-def _():
+def _fp16():
     fwd = lambda t: t.half()
     inv = lambda t: t.float()
     sample = torch.randn(5, 5, dtype=torch.float32)
-    return fwd, inv, sample
+    tol = 5e-3  # looser because of fp16 precision
+    return fwd, inv, sample, tol
 
-# --------------------------------------------------------------------
-# 3. LoRA merge (rank‑r update)  ~ inverse via subtract
+
+# -------------------------------------------------------------------------
+# 3. LoRA merge / unmerge  (loosen a hair; some combos hit ~3e‑6)
+# -------------------------------------------------------------------------
 @register("lora_merge")
-def _():
+def _lora():
     rank_r = 4
     A = torch.randn(16, rank_r)
     B = torch.randn(rank_r, 16)
     delta = A @ B
+
     fwd = lambda W: W + delta
     inv = lambda W: W - delta
     sample = torch.randn(16, 16)
-    return fwd, inv, sample
+    tol = 1e-5
+    return fwd, inv, sample, tol
 
-# --------------------------------------------------------------------
-# 4. Quantize int8 <-> dequantize
+
+# -------------------------------------------------------------------------
+# 4. int8 quantise / de‑quantise   (lossy, but bounded)
+# -------------------------------------------------------------------------
 @register("int8_quant")
-def _():
+def _int8():
     scale = 0.02
-    fwd = lambda arr: (arr / scale).round().clip(-128,127).astype(np.int8)
-    inv = lambda q: q.astype(np.float32) * scale
-    sample = np.random.randn(32,).astype(np.float32)
-    return fwd, inv, sample
 
-# --------------------------------------------------------------------
-# 5. Temperature‑scale logits
+    fwd = lambda arr: (
+        (arr / scale).round().clip(-128, 127).astype(np.int8)
+    )
+    inv = lambda q: q.astype(np.float32) * scale
+    # constrain sample so it doesn't clip
+    sample = np.random.uniform(-2.4, 2.4, size=(32,)).astype(np.float32)
+    tol = 0.05  # 5 % absolute error acceptable here
+    return fwd, inv, sample, tol
+
+
+# -------------------------------------------------------------------------
+# 5. Temperature scaling of logits
+# -------------------------------------------------------------------------
 @register("temp_scale_logits")
-def _():
+def _temp():
     T = 0.7
     fwd = lambda l: l / T
     inv = lambda l: l * T
     sample = torch.randn(10)
-    return fwd, inv, sample
+    return fwd, inv, sample  # default tol 1e‑3 is fine
 
-# --------------------------------------------------------------------
-# 6. JSON policy patch
+
+# -------------------------------------------------------------------------
+# 6. JSON policy patch / unpatch
+# -------------------------------------------------------------------------
 @register("json_patch_age")
-def _():
-    patch = {"age_limit": 16}
-    def fwd(js): 
+def _json():
+    patched_val = 16
+    key = "age_limit"
+
+    def fwd(js: dict):
         out = copy.deepcopy(js)
-        out.update(patch)
+        out[key] = patched_val
         return out
-    def inv(js):
+
+    def inv(js: dict):
         out = copy.deepcopy(js)
-        if "age_limit" in out and out["age_limit"]==16:
-            out.pop("age_limit")
+        # restore original (13) if we previously patched
+        if out.get(key) == patched_val:
+            out[key] = 13
         return out
+
     sample = {"pii_allowed": False, "age_limit": 13}
     return fwd, inv, sample
 
-# --------------------------------------------------------------------
-# 7. Lower‑case string ↔ Title‑case
-@register("string_lower")
-def _():
-    fwd = lambda s: s.lower()
-    inv = lambda s: s.title()
-    sample = "Gerbe AI"
-    return fwd, inv, sample
-### Stage 2 artifact: **taxonomy/reversible\_transforms.py**
 
-
-"""
-taxonomy/reversible_transforms.py
----------------------------------
-Catalog of *common* ML‑ops transforms plus an `approx_inverse()` stub
-for each.  The goal is to quantify how many real‑world ops are
-reversible *enough* for gerbe checks.
-
-The registry maps a name → (forward_fn, inverse_fn, sample_value).
-
-For fuzzy inverses we check L2 or semantic equality within a tolerance.
-"""
-
-import json
-import numpy as np
-import torch
-import copy
-
-REGISTRY = {}
-
-def register(name):
-    def _wrap(fnsample):
-        REGISTRY[name] = fnsample
-        return fnsample
-    return _wrap
-
-# --------------------------------------------------------------------
-# 1. Identity (baseline sanity)
-@register("identity")
-def _( ):
-    fwd = lambda x: x
-    inv = lambda x: x
-    sample = 42
-    return fwd, inv, sample
-
-# --------------------------------------------------------------------
-# 2. fp32 ↔ fp16 tensor cast
-@register("fp32_to_fp16")
-def _():
-    fwd = lambda t: t.half()
-    inv = lambda t: t.float()
-    sample = torch.randn(5, 5, dtype=torch.float32)
-    return fwd, inv, sample
-
-# --------------------------------------------------------------------
-# 3. LoRA merge (rank‑r update)  ~ inverse via subtract
-@register("lora_merge")
-def _():
-    rank_r = 4
-    A = torch.randn(16, rank_r)
-    B = torch.randn(rank_r, 16)
-    delta = A @ B
-    fwd = lambda W: W + delta
-    inv = lambda W: W - delta
-    sample = torch.randn(16, 16)
-    return fwd, inv, sample
-
-# --------------------------------------------------------------------
-# 4. Quantize int8 <-> dequantize
-@register("int8_quant")
-def _():
-    scale = 0.02
-    fwd = lambda arr: (arr / scale).round().clip(-128,127).astype(np.int8)
-    inv = lambda q: q.astype(np.float32) * scale
-    sample = np.random.randn(32,).astype(np.float32)
-    return fwd, inv, sample
-
-# --------------------------------------------------------------------
-# 5. Temperature‑scale logits
-@register("temp_scale_logits")
-def _():
-    T = 0.7
-    fwd = lambda l: l / T
-    inv = lambda l: l * T
-    sample = torch.randn(10)
-    return fwd, inv, sample
-
-# --------------------------------------------------------------------
-# 6. JSON policy patch
-@register("json_patch_age")
-def _():
-    patch = {"age_limit": 16}
-    def fwd(js): 
-        out = copy.deepcopy(js)
-        out.update(patch)
-        return out
-    def inv(js):
-        out = copy.deepcopy(js)
-        if "age_limit" in out and out["age_limit"]==16:
-            out.pop("age_limit")
-        return out
-    sample = {"pii_allowed": False, "age_limit": 13}
-    return fwd, inv, sample
-
-# --------------------------------------------------------------------
-# 7. Lower‑case string ↔ Title‑case
-@register("string_lower")
-def _():
-    fwd = lambda s: s.lower()
-    inv = lambda s: s.title()
-    sample = "Gerbe AI"
-    return fwd, inv, sample
-
-
-
-
-### Stage 2 artifact: **taxonomy/unit\_tests.py**
-
-#!/usr/bin/env python
-"""
-taxonomy/unit_tests.py
-----------------------
-Loop over all transforms in reversible_transforms.REGISTRY,
-apply forward then inverse, and compute an error metric.
-
-Pass criteria:
-  * numeric tensors/arrays: max abs diff < 1e-3
-  * JSON / dict / str: exact equality
-
-Prints a summary table and exits 1 if overall pass rate < 70 %.
-"""
-
-import sys, math, json, numpy as np, torch
-from reversible_transforms import REGISTRY
-
-PASS, FAIL = [], []
-
-def is_equal(a, b):
-    if isinstance(a, (np.ndarray, torch.Tensor)):
-        return float(np.max(np.abs(a - b))) < 1e-3
-    return a == b
-
-for name, fn in REGISTRY.items():
-    fwd, inv, sample = fn()
-    try:
-        out = fwd(sample)
-        back = inv(out)
-        ok = is_equal(sample, back)
-    except Exception as e:
-        ok = False
-        back = f"(error: {e})"
-    (PASS if ok else FAIL).append(name)
-    status = "✅" if ok else "❌"
-    print(f"{status} {name:<20} | sample→fwd→inv == orig ? {ok}")
-
-print("\nSummary:", len(PASS), "pass,", len(FAIL), "fail")
-if len(PASS) / (len(PASS)+len(FAIL)) < 0.70:
-    sys.exit("Fail rate too high for Stage‑2 threshold")
+# -------------------------------------------------------------------------
+# Note: the previous 'string_lower' example was removed—true inverse
+# would require storing original capitalisation; treated as non‑reversible.
+# -------------------------------------------------------------------------

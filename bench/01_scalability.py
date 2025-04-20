@@ -1,30 +1,35 @@
 #!/usr/bin/env python
 """
 bench/01_scalability.py
------------------------
-Generate a random sparse context graph and benchmark two triangle–obstruction
-algorithms:
+=======================
+Stress‑test Gerbe’s triangle‑obstruction check.
 
-• baseline_brute() – check EVERY triple O(n³)
-• edge_pruned()    – enumerate only *closed* triangles in the graph
-                     (uses NetworkX’s triangle enumeration)
+It benchmarks two algorithms:
 
-Reports:
-  nodes, dim, edges, triangles_checked, runtime_sec, peak_MB
+• baseline_brute  – checks ALL triples (O(n³))
+• edge_pruned     – enumerates only existing triangles in the graph
+                    via NetworkX; expected to scale far better.
 
-Usage examples
---------------
-# 200 nodes, 128‑D embeddings, avg degree ~ 4
+Outputs:
+  nodes, dim, edges, triangles, baseline_sec, pruned_sec, peak_MB
+
+If --out FILE is supplied, rows are appended to FILE in CSV format.
+
+Usage
+-----
+# Single run (200 nodes, 128‑D, avg deg 4)
 python bench/01_scalability.py --nodes 200 --dim 128 --deg 4
 
-# Sweep node sizes (100,200,…,500) and plot
-python bench/01_scalability.py --sweep
+# Sweep 100→600 nodes in steps of 100
+python bench/01_scalability.py --sweep --out sweep.csv
 """
 
 import argparse
+import csv
 import os
 import random
 import time
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 import networkx as nx
@@ -34,7 +39,9 @@ import psutil
 process = psutil.Process(os.getpid())
 
 
-# ---------- helpers --------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 def rot_matrix(dim: int) -> np.ndarray:
     q, _ = np.linalg.qr(np.random.randn(dim, dim))
     return q
@@ -48,7 +55,9 @@ def compose(m2: np.ndarray, m1: np.ndarray) -> np.ndarray:
     return m2 @ m1
 
 
-# ---------- graph generator ------------------------------------------------
+# ---------------------------------------------------------------------------
+# Synthetic graph generator
+# ---------------------------------------------------------------------------
 def synthetic_graph(
     n: int, dim: int, avg_deg: int
 ) -> Tuple[List[str], Dict[Tuple[str, str], np.ndarray], np.ndarray, nx.Graph]:
@@ -58,7 +67,6 @@ def synthetic_graph(
     mats = {}
     G = nx.DiGraph()
 
-    # Random directed edges until avg degree hit
     target_edges = n * avg_deg
     while len(mats) < target_edges:
         a, b = random.sample(nodes, 2)
@@ -69,15 +77,16 @@ def synthetic_graph(
     return nodes, mats, vec, G
 
 
-# ---------- obstruction algorithms ----------------------------------------
+# ---------------------------------------------------------------------------
+# Obstruction algorithms
+# ---------------------------------------------------------------------------
 def obstruction_baseline(
     nodes: List[str],
     mats: Dict[Tuple[str, str], np.ndarray],
     vec: np.ndarray,
 ) -> int:
-    """Check every triple (O(n³)). Returns count of obstructions."""
-    n = len(nodes)
     bad = 0
+    n = len(nodes)
     for i in range(n):
         for j in range(i + 1, n):
             for k in range(j + 1, n):
@@ -95,7 +104,6 @@ def obstruction_edge_pruned(
     vec: np.ndarray,
     graph: nx.Graph,
 ) -> int:
-    """Enumerate only closed triangles in the undirected version of graph."""
     bad = 0
     triangles = (
         clq for clq in nx.enumerate_all_cliques(graph.to_undirected()) if len(clq) == 3
@@ -109,8 +117,33 @@ def obstruction_edge_pruned(
     return bad
 
 
-# ---------- benchmarks -----------------------------------------------------
-def bench_once(n: int, dim: int, deg: int):
+# ---------------------------------------------------------------------------
+# CSV helper
+# ---------------------------------------------------------------------------
+def write_row(csv_path: str, row: list[str]):
+    file = Path(csv_path)
+    write_header = not file.exists()
+    with file.open("a", newline="") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(
+                [
+                    "nodes",
+                    "dim",
+                    "edges",
+                    "triangles",
+                    "baseline_sec",
+                    "pruned_sec",
+                    "peak_MB",
+                ]
+            )
+        writer.writerow(row)
+
+
+# ---------------------------------------------------------------------------
+# Benchmark per run
+# ---------------------------------------------------------------------------
+def bench_once(n: int, dim: int, deg: int, csv_path: str | None):
     nodes, mats, vec, G = synthetic_graph(n, dim, deg)
 
     def run(fn):
@@ -131,30 +164,58 @@ def bench_once(n: int, dim: int, deg: int):
         f"pruned {t2:6.2f}s {m2:6.1f}MB"
     )
 
+    if csv_path:
+        write_row(
+            csv_path,
+            [
+                n,
+                dim,
+                len(mats),
+                tri,
+                f"{t1:.2f}",
+                f"{t2:.2f}",
+                f"{max(m1, m2):.1f}",
+            ],
+        )
 
-def sweep():
+
+def sweep(deg: int, csv_path: str | None):
     print("nodes | triangles | baseline_s | pruned_s")
     for n in range(100, 601, 100):
-        nodes, mats, vec, G = synthetic_graph(n, 64, avg_deg=4)
+        nodes, mats, vec, G = synthetic_graph(n, 64, avg_deg=deg)
         tri = sum(nx.triangles(nx.Graph(G)).values()) // 3
+
         def runtime(fn):
             start = time.time()
             _ = fn(nodes, mats, vec) if fn == obstruction_baseline else fn(mats, vec, G)
             return time.time() - start
-        print(f"{n:<5} | {tri:<10} | {runtime(obstruction_baseline):<11.2f} | "
-              f"{runtime(obstruction_edge_pruned):<8.2f}")
+
+        b = runtime(obstruction_baseline)
+        p = runtime(obstruction_edge_pruned)
+        print(f"{n:<5} | {tri:<10} | {b:<11.2f} | {p:<8.2f}")
+
+        if csv_path:
+            write_row(csv_path, [n, 64, len(mats), tri, f"{b:.2f}", f"{p:.2f}", "NA"])
 
 
-# ---------- CLI ------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Gerbe scalability benchmark")
     ap.add_argument("--nodes", type=int, default=200)
     ap.add_argument("--dim", type=int, default=128)
     ap.add_argument("--deg", type=int, default=4, help="avg out‑degree per node")
     ap.add_argument("--sweep", action="store_true", help="run 100‑>600 node sweep")
+    ap.add_argument(
+        "--out",
+        default=None,
+        help="CSV file to append benchmark results (optional)",
+    )
     args = ap.parse_args()
 
     if args.sweep:
-        sweep()
+        sweep(args.deg, args.out)
     else:
-        bench_once(args.nodes, args.dim, args.deg)
+        bench_once(args.nodes, args.dim, args.deg, args.out)
+

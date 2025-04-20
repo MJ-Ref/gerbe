@@ -1,11 +1,15 @@
 # Virtual environment
 .venv/
 
-# Temporary/old files
-README old.md
-
 # macOS system files
 .DS_Store
 
 # Output directories
-reports/ 
+reports/
+
+# Dataset file
+synthetic_harness/dataset.pkl
+synthetic_harness/sample.pkl
+
+# Python cache
+__pycache__/ 

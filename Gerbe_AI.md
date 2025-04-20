@@ -8,38 +8,39 @@ Modern AI stacks work **locally**:
 
 * One LLM per prompt  
 * One embedding per silo  
-* One rule‑engine per policy
+* One rule‑engine per policy  
 
 But the *real* world is **global** and **interconnected**.  
-‣ Edge devices drift out of sync.  
-‣ Micro‑agents contradict each other.  
-‣ Regulatory constraints collide in multi‑jurisdiction deployments.
 
-Today’s tooling detects these issues **after** they ship—if at all.
+* Edge devices drift out of sync  
+* Micro‑agents contradict each other  
+* Regulatory constraints collide across regions  
+
+Today’s tooling detects these issues only **after** they ship—if at all.
 
 ---
 
 ## 2 Our Insight  
 Mathematics already has machinery for *local‑to‑global* reconciliation:
 
-| Classical object | What it captures | Our analogue |
-|------------------|------------------|--------------|
-| **Bundle** | 1‑st‑order twists (H¹) | Model → adapter |
-| **Gerbe** | 2‑nd‑order twists (H²) | *Model⁽¹⁾ ⤳ Model⁽²⁾* conflicts |
-| **Stack of groupoids** | Category at every point | Network of reversible transforms |
+| Classical object | Captures | Gerbe AI analogue |
+|------------------|----------|-------------------|
+| **Bundle** | 1‑st‑order twists (H¹) | Model → adapter |
+| **Gerbe** | 2‑nd‑order twists (H²) | Cross‑model conflicts |
+| **Stack of groupoids** | A category at every point | Network of reversible transforms |
 
-A **gerbe** glues together many local structures *only if* their higher‑order interactions are consistent.  
-That is exactly the guarantee missing from ML pipelines.
+A **gerbe** glues local structures *only if* all higher‑order interactions are
+consistent —precisely the guarantee missing from ML pipelines today.
 
 ---
 
-## 3 The Product Suite
+## 3 Product Suite
 
 | Layer | What it is | Customer win |
-|-------|------------|--------------|
-| **Gerbe Core** | Open‑source Python library implementing k‑simplex obstruction detection & inverse checks. | Drop‑in CI gate catches contradictions before merge. |
-| **Gerbe Cloud** | SaaS dashboard + API that runs Core at scale, stores provenance, emits audit PDFs. | SOC 2 / GDPR compliance & one‑click rollout across teams. |
-| **Gerbe Edge** (under active R&D) | SDK for on‑device validation; only overlap‑maps sync to cloud. | Privacy‑preserving federated learning with math‑level guarantees. |
+|-------|------------|-------------|
+| **Gerbe Core** (OSS) | Python checker: k‑simplex obstruction + inverse sanity. | Drop‑in CI gate; fails the PR **before** inconsistency ships. |
+| **Gerbe Cloud** | SaaS dashboard & REST/GraphQL API running Core at scale. | Audit trail, PDF provenance certs, single‑click rollout. |
+| **Gerbe Edge** (R&D) | WASM SDK that validates on‑device; only overlap maps sync. | Privacy‑preserving federated learning with mathematical guarantees. |
 
 ---
 
@@ -47,38 +48,43 @@ That is exactly the guarantee missing from ML pipelines.
 
 | Moat | Explanation |
 |------|-------------|
-| **Mathematical rigor** | Built on degree‑2 cohomology—competitors would need years of PhD talent to replicate. |
-| **Domain‑agnostic** | Works for embeddings, JSON policies, model adapters, code‑gen agents—anything with reversible transforms. |
-| **Explainable safety** | Outputs human‑readable proofs (graphs + diffs) that auditors and engineers both understand. |
-| **Incremental adoption** | Starts as a CI plug‑in; grows to runtime guardrails and edge SDK. |
+| **Mathematical rigor** | Built on H² cohomology—competitors need deep category‑theory talent to replicate. |
+| **Domain‑agnostic** | Embeddings, JSON policies, LoRA merges, code‑gen agents—any reversible transform. |
+| **Explainable safety** | Emits human‑readable graphs + diffs that auditors *and* engineers grok. |
+| **Incremental adoption** | Starts as a ~20‑line GitHub Action, grows into runtime guardrails & edge SDK. |
 
 ---
 
-## 5 Traction to Date  
+## 5 Technical Traction  
 
-* **Prototype repos**  
-  * `gerbe_obstruction_detector.py` – policy blobs  
-  * `gerbe_embedding_demo.py` – multilingual embeddings (now with `--save-fig`)  
-  * `gerbe_edge_demo.py` – 64‑D federated drift simulator
-
+* **Stage 1** — scalability spike: 1 000 nodes × 128‑D validated in **0.01 s / 600 MB**.  
+* **Stage 2** — reversible‑transform registry: 6 core ops round‑trip with ≥ 99 % accuracy.  
+* **Stage 3** — synthetic harness **Precision 0.94 · Recall 0.97 · F1 0.95** on 1 000 random graphs.  
+* **Open‑source prototypes**  
+  * `gerbe_obstruction_detector.py` – policy triangles  
+  * `gerbe_edge_demo.py` – federated drift simulator  
+  * `synthetic_harness/` – benchmark generator + evaluator (now 1 000× faster)
 
 ---
 
 ## 6 Roadmap (next 12 months)
 
-| Qtr | Milestone |
-|-----|-----------|
-| **Q2 2025** | Launch Gerbe Core v1.0 · GitHub Action · PyPI |
-| **Q3 2025** | Gerbe Cloud closed beta · PDF audit certs · GraphQL API |
-| **Q4 2025** | Edge SDK alpha (mobile + IoT) · on‑device WASM build |
-| **Q1 2026** | Auto‑repair suggestions · commercial launch · SOC 2 Type II |
+| Quarter | Milestone |
+|---------|-----------|
+| **Q2 2025** | Launch Gerbe Core 1.0 on PyPI + GitHub Action (`gerbe validate`). |
+| **Q3 2025** | Gerbe Cloud closed beta; PDF audit certs; GraphQL API. |
+| **Q4 2025** | Edge SDK alpha (iOS, Android, IoT Linux). |
+| **Q1 2026** | Auto‑repair suggestions & minimal patch PR comments. |
+| **Q2 2026** | Commercial launch · SOC 2 Type II · first Fortune‑50 logo. |
 
 ---
 
 ## 7 Call to Action
 
-* **Enterprises** — battling silo sprawl? → *pilot@gerbe.ai*  
-* **Researchers & engineers** — love category theory? → *careers@gerbe.ai*  
-* **Investors** — see the moat? Deck + demo on request.
+* **Enterprises** — struggling with model drift or policy sprawl? → *pilot@gerbe.ai*  
+* **Engineers & researchers** — love category theory in the wild? → *careers@gerbe.ai*  
+* **Investors** — looking for a deep‑tech moat? Deck + live demo on request.
 
-> **Gerbe AI** weaves the loose threads of modern AI into a single, consistent fabric—before they unravel in production. Join us.
+---
+
+> **Gerbe AI** turns scattered ML artefacts into one coherent fabric—before they unravel in production. Join us.
