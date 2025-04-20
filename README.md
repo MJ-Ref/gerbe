@@ -1,7 +1,3 @@
-Here’s an **updated README.md** that brings Stage 4’s new CLI gate and realistic
-benchmark front‑and‑center, while trimming older demo‑only details.
-
-```md
 # Gerbe Obstruction Detector 🪄
 
 A **local‑to‑global consistency validator** that catches higher‑order conflicts,
@@ -136,13 +132,5 @@ See `docs/STAGE_3_REPORT.md` for full methodology.
 ---
 
 *Gerbe = French “sheaf of wheat” 🌾— weaving scattered models & policies into a coherent harvest of insight.*
-```
 
-**Highlights of what changed**
-
-* Added **Stage 4 CLI** front‑and‑center (`gerbe_validate.py`).
-* Included **realistic benchmark numbers** and how to reproduce.
-* Replaced older demo table with concise pointers; demos still there for
-  deeper dives.
-* CI Action uses `--mode warn` and `--changed` diff for real‑world flow.
 
