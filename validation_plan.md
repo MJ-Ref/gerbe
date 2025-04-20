@@ -47,3 +47,5 @@ In three weeks you’ll either:
 * discover a blocker while burn‑rate is still near zero.
 
 That’s the cheapest possible validation path.
+
+
