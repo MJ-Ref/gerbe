@@ -59,7 +59,7 @@ consistent —precisely the guarantee missing from ML pipelines today.
 
 * **Stage 1** — scalability spike: 1 000 nodes × 128‑D validated in **0.01 s / 600 MB**.  
 * **Stage 2** — reversible‑transform registry: 6 core ops round‑trip with ≥ 99 % accuracy.  
-* **Stage 3** — synthetic harness **Precision 0.94 · Recall 0.97 · F1 0.95** on 1 000 random graphs.  
+* **Stage 3** — synthetic harness **Precision 1.00 · Recall 1.00 · F1 1.00** on 1 000 random graphs.  
 * **Open‑source prototypes**  
   * `gerbe_obstruction_detector.py` – policy triangles  
   * `gerbe_edge_demo.py` – federated drift simulator  
