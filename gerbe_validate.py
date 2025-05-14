@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 """
 gerbe_validate.py
 -----------------
